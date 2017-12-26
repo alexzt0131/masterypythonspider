@@ -410,8 +410,23 @@ def test_jd():
                 print(type(e))
                 print(e)
 
+def qiushibaike(url=''):
+    header = ('User-Agent', 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0')
+    opener = urllib.request.build_opener()
+    opener.addheaders = [header]
+    urllib.request.install_opener(opener)
 
+    html = urllib.request.urlopen(url).read().decode('utf8')
 
+    namepat = r'<h2>\s(.*?)\s</h2>'
+    names = re.compile(namepat).findall(html)
+    contentpat = r'<div class="content">\s<span>([\s\S]*?)</span>\n+?</div>'
+    contents = re.compile(contentpat).findall(html)
+    result = {}
+    for key, val in zip(names, contents):
+        # print(key, val)
+        result.update({key: val.replace('\n', '')})
+    return result
 
 if __name__ == '__main__':
 
@@ -423,6 +438,20 @@ if __name__ == '__main__':
     # write_to_file(data, 'test.html')
     # http://bbs.chinaunix.net/member.php?mod=logging&action=login&logsubmit=yes
 
-    test_jd()
+    # for i in qiushibaike(url).items():
+    #     print(i)
 
+
+    #-----------糗事百科测试--------------
+    result = {}
+    length = 13
+    for page in range(1, length + 1):
+        url = 'https://www.qiushibaike.com/text/page/{}/'.format(page)
+        result.update(qiushibaike(url))
+        print('{}/{}'.format(str(page), str(length)))
+
+
+    for i in enumerate(result.items()):
+        print(i)
+    #------------end of test------------
     pass
