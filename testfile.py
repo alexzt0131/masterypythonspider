@@ -8,7 +8,7 @@ import time
 
 import lxml.html
 import re
-
+import urllib.error
 import os
 
 '''
@@ -61,53 +61,86 @@ def get_proxies(url='', cssselect=''):
     :return:
     '''
     # 用以下3行代码来修复可能不完整的html
-    url = 'http://www.kuaidaili.com/free/intr/'
+    url = 'http://www.xicidaili.com/nn/'
     bronk_html = get_html(url)
     import lxml.html
     tree = lxml.html.fromstring(bronk_html)
+    # print(bronk_html)
     # fixed_html = lxml.html.tostring(tree, pretty_print=True)
     # 用lxml的css选择器来抽取需要的数据
-    tds = tree.cssselect('tbody > tr')
+    tds = tree.cssselect('tr td')
     total = len(tds)
+    ippat = r'(?<![\.\d])(?:\d{1,3}\.){3}\d{1,3}(?![\.\d])'
+    portpat = r'[0-9]{1,5}\d$'
+    typepat = r'[HTTP|HTTPS]'
+    infos = []
+    ips = []
+    ports = []
+    types = []
+    for i in tds:
+
+        try:
+            ip = re.compile(ippat).match(i.text)
+            if ip:
+                ips.append(i.text)
+                # print(i.text)
+            port = re.compile(portpat).match(i.text)
+            if port:
+                ports.append(i.text)
+                # print(i.text)
+
+            type = re.compile(typepat).match(i.text)
+            if type:
+                types.append(i.text)
+                # print(i.text)
+        except Exception as e:
+            # print(e)
+            pass
+
+    for ip, port, type in zip(ips, ports, types):
+        print(ip, port, type)
+
+
+
     count = 1
 
-    result = []
-    def is_ip_available(proxies):
-        headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0'}
-        # flag = os.system('ping -c 1 %s' % proxy_ip.split(':')[0])  # int型可用返回0,不可用256
-        #subprocess.getstatusoutput 第一个参数获得状态，第二个获得输出
-        print('ping testing...')
-        flag = subprocess.getstatusoutput('ping -c 1 %s' % proxy_ip.split(':')[0])# 可用返回0,不可用256
-        print(flag)
-        if flag[0] == 0:
-            try:
-                print('checking status code...')
-                # html = requests.get(url='http://ip.chinaz.com', proxies=proxies, headers=headers)
-                html = requests.get(url='http://www.speedtest.cn/', proxies=proxies, headers=headers)
-                if html.status_code == 200:
-                    print('proxy %s---status code is %s' % (proxies, html.status_code))
-                    return True
-            except ProxyError as e:
-                print(type(e))
-                print(e)
-                return None
+    # result = []
+    # def is_ip_available(proxies):
+    #     headers = {'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0'}
+    #     # flag = os.system('ping -c 1 %s' % proxy_ip.split(':')[0])  # int型可用返回0,不可用256
+    #     #subprocess.getstatusoutput 第一个参数获得状态，第二个获得输出
+    #     print('ping testing...')
+    #     flag = subprocess.getstatusoutput('ping -c 1 %s' % proxy_ip.split(':')[0])# 可用返回0,不可用256
+    #     print(flag)
+    #     if flag[0] == 0:
+    #         try:
+    #             print('checking status code...')
+    #             # html = requests.get(url='http://ip.chinaz.com', proxies=proxies, headers=headers)
+    #             html = requests.get(url='http://www.speedtest.cn/', proxies=proxies, headers=headers)
+    #             if html.status_code == 200:
+    #                 print('proxy %s---status code is %s' % (proxies, html.status_code))
+    #                 return True
+    #         except ProxyError as e:
+    #             print(type(e))
+    #             print(e)
+    #             return None
+    #
+    # for td in tds:
+    #     print('now %s/%s' %(count, total))
+    #     ip = td[0].text
+    #     port = td[1].text
+    #
+    #     proxy_ip = '%s:%s' % (ip, port)
+    #     proxies = {"http": "http://%s" % proxy_ip, "https": "http://%s" % proxy_ip, }
+    #
+    #     if is_ip_available(proxies):
+    #         result.append(proxy_ip)
+    #     else:
+    #         print('%s is invalid' % proxy_ip)
+    #     print("-" * 88)
+    #     count += 1
 
-    for td in tds:
-        print('now %s/%s' %(count, total))
-        ip = td[0].text
-        port = td[1].text
-
-        proxy_ip = '%s:%s' % (ip, port)
-        proxies = {"http": "http://%s" % proxy_ip, "https": "http://%s" % proxy_ip, }
-
-        if is_ip_available(proxies):
-            result.append(proxy_ip)
-        else:
-            print('%s is invalid' % proxy_ip)
-        print("-" * 88)
-        count += 1
-
-    return result
+    # return result
 
 def get_html(url=''):
 
@@ -428,30 +461,255 @@ def qiushibaike(url=''):
         result.update({key: val.replace('\n', '')})
     return result
 
-if __name__ == '__main__':
+class WxTest():
+    def __init__(self, key='', pagestart=1, pageend=1):
+        self.headers = ('User-Agent', 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:57.0) Gecko/20100101 Firefox/57.0')
+        self.opener = urllib.request.build_opener()
+        self.opener.addheaders = [self.headers]
+        self.listurl = []
+        self.proxys = '183.14.111.55:8088'
+        # self.proxys = '124.205.155.156:9090'
+        urllib.request.install_opener(self.opener)
+        self.getlinks(key=key, pagestart=pagestart, pageend=pageend)
+        # self.getCotents()
 
+    def use_proxy(self, proxy_addr, url):
+        '''
+        使用代理获得数据
+        :param proxy_addr:
+        :param url:
+        :return:
+        '''
+        print('in use_proxy')
+        try:
+            #注册handleer
+            proxy = urllib.request.ProxyHandler({'http:': proxy_addr})
+            #实例化opener 添加 代理 与 handler
+            opener = urllib.request.build_opener(proxy, urllib.request.ProxyHandler)
+            urllib.request.install_opener(opener)
+            try:
+                data = urllib.request.urlopen(url).read().decode('utf8')
+            except UnicodeDecodeError as e:
+                print(e)
+                data = urllib.request.urlopen(url).read().decode('gbk')
+            except Exception as e:
+                print(type(e))
+                print(e)
+            return data
+        except urllib.error.URLError as e:
+            if hasattr(e, 'code'):
+                print(e.code)
+            if hasattr(e, 'reason'):
+                print(e.reason)
+            print('sleep 10 seconds')
+            time.sleep(10)
+        except Exception as e:
+            print(type(e))
+            print(e)
+            time.sleep(1)
+
+    def parse_link(self, html):
+        #过滤链接（要注意的是这里parse过来的链接不能直接打开，对比手动打开的链接后分析后发现字段中多了几个阿妈amp;）
+        apat = r'<a target="_blank" href="(.*?)"'
+        temp = re.compile(apat).findall(html)
+        for i in temp:
+            print(i)
+            self.listurl.append(re.sub('amp;', '', i))
+
+
+    def getlinks(self, key='', pagestart=1, pageend=1):
+        '''
+        根据参数来循环获得weixin.sogou的关键词信息
+        要注意用urllib.request.quote()来编码key与变量名&page
+        :param key:
+        :param pagestart:
+        :param pageend:
+        :return:
+        '''
+        try:
+            #编码关键词与&page
+            keycode = urllib.request.quote(key)
+            # pagecode = urllib.request.quote('&page')
+
+            #循环爬取个page内的链接
+            for page in range(pagestart, pageend + 1):
+                url = 'http://weixin.sogou.com/weixin?type=2&query={}&page={}'.format(keycode, page)
+                print(url)
+                #用代理来获得html
+                html = self.use_proxy(self.proxys, url)
+                print(html)
+                self.parse_link(html)
+
+        except Exception as e:
+            print(type(e))
+            print(e)
+
+    def getCotents(self):
+
+        # try:
+        for idnex, url in enumerate(self.listurl):
+            print(url)
+            html = self.use_proxy(self.proxys, url=url)
+            content = lxml.html.fromstring(html).cssselect('#js_content')[0]
+            titlepat = r'<title>(.*)</title>'
+            title = re.compile(titlepat).findall(html)
+            filename = title
+            print(title)
+            print(content)
+            break
+            top = '''
+            <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>{}</title>
+        </head>
+        <body>
+            '''.format(title)
+            foot = '''
+        </body>
+        </html>
+            '''
+            # with open('{}.html'.format(filename), 'w+') as f:
+            #     f.write(top)
+            # with open('{}.html'.format(filename), 'ab') as f:
+            #     f.write(content.strip().encode('utf8'))
+            # with open('{}.html'.format(filename), 'a') as f:
+            #     f.write(foot)
+            # print('正在处理{}/{}'.format(idnex + 1 ,len(self.listurl)))
+        # except Exception as e:
+        #
+        #     print(type(e))
+        #     print(e)
+
+
+
+
+if __name__ == '__main__':
+    #书看到80页
     # get_proxies()
     #
     # url = 'http://www.baidu.com/'
     # data = use_proxy(url)
-    # print(len(data))
-    # write_to_file(data, 'test.html')
-    # http://bbs.chinaunix.net/member.php?mod=logging&action=login&logsubmit=yes
+    # print(len(data))on=login&logsubmit=yes
 
     # for i in qiushibaike(url).items():
+    # write_to_file(data, 'test.html')
+    # http://bbs.chinaunix.net/member.php?mod=logging&acti
     #     print(i)
 
+    def use_proxy(proxy_addr, url):
+        '''
+        使用代理获得数据
+        :param proxy_addr:
+        :param url:
+        :return:
+        '''
+        print('in use_proxy')
+        try:
+            #注册handleer
+            proxy = urllib.request.ProxyHandler({'http:': proxy_addr})
+            #实例化opener 添加 代理 与 handler
+            opener = urllib.request.build_opener(proxy)
+            urllib.request.install_opener(opener)
+            try:
+                data = urllib.request.urlopen(url).read().decode('utf8')
+            except UnicodeDecodeError as e:
+                print(e)
+                data = urllib.request.urlopen(url).read().decode('gbk')
+            except Exception as e:
+                print(type(e))
+                print(e)
+            return data
+        except urllib.error.URLError as e:
+            if hasattr(e, 'code'):
+                print(e.code)
+            if hasattr(e, 'reason'):
+                print(e.reason)
+            print('sleep 10 seconds')
+            time.sleep(10)
+        except Exception as e:
+            print(type(e))
+            print(e)
+            time.sleep(1)
+    # get_proxies()
 
-    #-----------糗事百科测试--------------
-    result = {}
-    length = 13
-    for page in range(1, length + 1):
-        url = 'https://www.qiushibaike.com/text/page/{}/'.format(page)
-        result.update(qiushibaike(url))
-        print('{}/{}'.format(str(page), str(length)))
+    #--------------测试微信------------------
+    # wx = WxTest(key='物联网', pagestart=1, pageend=2)
+    # url = 'https://mp.weixin.qq.com/s?src=11&timestamp=1514391517&ver=600&signature=IpVQYEIkBwWdIYRTuovhkTw*W8ctdYT7hPFfultJXFMKPvtOvxTSCKfY*G9myBNxnQorYAMLbXfIvtPI-izYKMIzR0eMbbptTbo09MFw3UwAyIEm7B14G*JN*EOp7XB*&new=1'
+    # proxies = {
+    #     'http': '61.135.217.7:80',
+    #     # 'http': '119.29.218.75:8888',
+    #     # 'https': '112.114.98.169:8118',
+    #     'https': '219.138.58.222:3128',
+    # }
+    # html = requests.get(url=url, proxies=proxies)
+    # print(html.text)
 
 
-    for i in enumerate(result.items()):
-        print(i)
-    #------------end of test------------
+
+
+
+
+    get_proxies()
+
+
+
+
+
+
+
+
+
+
+
+    # print(use_proxy(proxy_addr='114.243.38.55:9000', url='http://weixin.sogou.com/weixin?type=2&query=%E7%89%A9%E8%81%94%E7%BD%91&page=1'))
+    # print(wx.getlinks(key='物联网'))
+    # print(len(wx.listurl))
+    # for i in wx.listurl:
+    #     print(i)
+    # print(len(wx.listurl))
+    # for i in wx.listurl:
+    #     print(i)
+    # url = 'http://www.jokeji.cn/'
+    # url = 'https://www.qiushibaike.com'
+    # url = 'http://weixin.sogou.com/weixin?type=2&query=%E7%89%A9%E8%81%94%E7%BD%91'
+    # html = wx.use_proxy(wx.proxys, url)
+    # print(data)
+    # url = 'https://mp.weixin.qq.com/s?src=3&timestamp=1514386348&ver=1&signature=APKC9gqt9cyGxMG9g4WmutTFFcChDh77pkZTO-RgusMSRB9k7L8DCr3c4jS9lOE3HbkH4L5hjfvcEn7rKdVhK1Lv-431EN9f49SDuTfdC91B5-eTZy8o4DX51HtHmfpTv*hLc4G1W8ocF23EVr96Tw=='
+    # html = wx.use_proxy(wx.proxys, url)
+    #
+    # tree = lxml.html.fromstring(html)
+    #
+    # # print(tree.cssselect('#js_content > p').__dir__())
+    # print(tree.cssselect('#js_content')[0].__dir__())
+    # print(tree.cssselect('#js_content')[0].text)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # #-----------糗事百科测试--------------
+    # result = {}
+    # length = 13
+    # for page in range(1, length + 1):
+    #     url = 'https://www.qiushibaike.com/text/page/{}/'.format(page)
+    #     result.update(qiushibaike(url))
+    #     print('{}/{}'.format(str(page), str(length)))
+    #
+    #
+    # for i in enumerate(result.items()):
+    #     print(i)
+    # #------------end of test------------
+
+    # get_proxies()
     pass
